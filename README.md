@@ -1,63 +1,71 @@
-# Roblox One Piece Starter Game (Advanced Version)
+# Roblox One Piece Starter Game
 
-This repo is a more advanced Roblox starter project inspired by anime pirate adventures.
+This repo is a more advanced Roblox pirate starter project inspired by anime adventure games.
 
-## Included features
+## Features
 
-- Island map with trees and ocean
-- Player health, stamina, and movement
-- Combat with attack damage, cooldown, and dash
-- Enemy AI that chases and attacks nearby players
-- Bounty system using leaderstats
-- Admin/owner commands for the game creator
-- Client-side UI for combat and admin controls
+- Large island map with ocean and trees
+- Player health, stamina, and movement tuning
+- Basic sword combat and dash movement
+- Enemy AI and boss fights
+- Devil Fruit pickups and power boosts
+- Quest board and island quest progression
+- Overpowered owner/admin commands
+
+## Included systems
+
+- Devil Fruits: Fire, Storm, Ice, Lightning, Quake
+- Bosses: Sand Warlord, Thunder Beast, Sea Demon
+- Quests: speak to the island quest board to complete objectives and earn bounty
+- Admin powers: heal, god mode, max stats, summon bosses, kill all enemies, teleport, set bounty, power boosts
 
 ## Roblox Studio setup
 
-1. Open Roblox Studio.
-2. Create a new Baseplate game.
-3. Paste these scripts into the matching folders:
+1. Open Roblox Studio and create a new Baseplate game.
+2. Place the scripts into the matching folders:
    - `src/ServerScriptService/GameBootstrap.server.lua` -> ServerScriptService
-   - `src/ServerScriptService/EnemyAI.server.lua` -> ServerScriptService
    - `src/ServerScriptService/OwnerCommands.server.lua` -> ServerScriptService
+   - `src/ReplicatedStorage/Modules/CombatConfig.lua` -> ReplicatedStorage > Modules
+   - `src/ReplicatedStorage/Modules/WorldBuilder.lua` -> ReplicatedStorage > Modules
    - `src/StarterPlayer/StarterPlayerScripts/CombatClient.client.lua` -> StarterPlayer > StarterPlayerScripts
    - `src/StarterPlayer/StarterPlayerScripts/AdminClient.client.lua` -> StarterPlayer > StarterPlayerScripts
-   - `src/ReplicatedStorage/Modules/CombatConfig.lua` -> ReplicatedStorage > Modules
-4. Press Play.
+3. Press Play.
 
-## Controls
+## Commands
 
-- WASD: Move
-- Left Mouse Click or F: Attack
-- Shift: Dash
-- Q: Skill burst / quick slash
+Use the command input in the game or the admin UI. Owner-only commands include:
 
-## Owner commands
+- `/heal`
+- `/god 30`
+- `/max`
+- `/tp x y z`
+- `/bounty 5000`
+- `/level 25`
+- `/spawnboss`
+- `/killall`
+- `/spawnfruit fire`
+- `/setfruit lightning`
+- `/speed 80`
+- `/superjump`
+- `/fly`
+- `/reset`
 
-Open the admin panel in the top-left of the screen and type one of the following commands:
+Examples:
 
-- `/heal` — restores your full health
-- `/god` — gives invincibility for 15 seconds
-- `/spawnenemy` — creates a new enemy near you
-- `/reset` — resets your position and health
-- `/tp x y z` — teleports to coordinates
-- `/bounty 250` — sets a bounty value
-
-Example:
-
-- `/tp 0 10 50`
-- `/bounty 500`
+- `/tp 0 20 50`
+- `/setfruit quake`
+- `/spawnboss`
+- `/killall`
 
 ## Notes
 
-This is still a starter project, not a full commercial game. It is designed as a base you can expand with:
+This is a starter prototype and a good foundation for a larger one-piece-inspired game. It is designed to be expanded with:
 
-- Devil Fruit powers
-- quests and NPCs
-- multiple islands
-- collection and inventory systems
-- boss fights
-- sword slash effects
-- animation systems
+- sword combos
+- move sets
+- quests with NPC dialogue
+- more islands
+- shops and inventory
+- boss arena progression
+- actual animation systems
 
-This repo is meant to be a clean starting point for your own Roblox pirate game.

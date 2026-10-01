@@ -1,125 +1,36 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
 
-local player = Players.LocalPlayer
-local combatConfig = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("CombatConfig"))
-local combatFolder = ReplicatedStorage:WaitForChild("Combat")
-local attackEvent = combatFolder:WaitForChild("Attack")
+local CombatConfig = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("CombatConfig"))
+local WorldBuilder = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("WorldBuilder"))
 
-local cooldown = 0
-local dashCooldown = 0
+local adminFolder = ReplicatedStorage:FindFirstChild("Admin") or Instance.new("Folder")
+adminFolder.Name = "Admin"
+adminFolder.Parent = ReplicatedStorage
 
-local function createCombatUI()
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "CombatUI"
-    gui.ResetOnSpawn = false
-    gui.Parent = player:WaitForChild("PlayerGui")
+local commandEvent = adminFolder:FindFirstChild("RunCommand") or Instance.new("RemoteEvent")
+commandEvent.Name = "RunCommand"
+commandEvent.Parent = adminFolder
 
-    local healthFrame = Instance.new("Frame")
-    healthFrame.Size = UDim2.new(0, 260, 0, 80)
-    healthFrame.Position = UDim2.new(0, 20, 1, -110)
-    healthFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    healthFrame.BackgroundTransparency = 0.2
-    healthFrame.BorderSizePixel = 0
-    healthFrame.Parent = gui
-
-    local healthLabel = Instance.new("TextLabel")
-    healthLabel.Size = UDim2.new(1, -20, 0, 18)
-    healthLabel.Position = UDim2.new(0, 10, 0, 8)
-    healthLabel.Text = "HP: 0 / 0"
-    healthLabel.Font = Enum.Font.GothamBold
-    healthLabel.TextSize = 14
-    healthLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    healthLabel.BackgroundTransparency = 1
-    healthLabel.Parent = healthFrame
-
-    local healthBarBG = Instance.new("Frame")
-    healthBarBG.Size = UDim2.new(1, -20, 0, 12)
-    healthBarBG.Position = UDim2.new(0, 10, 0, 32)
-    healthBarBG.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    healthBarBG.BorderSizePixel = 0
-    healthBarBG.Parent = healthFrame
-
-    local healthFill = Instance.new("Frame")
-    healthFill.Name = "HealthFill"
-    healthFill.Size = UDim2.new(1, 0, 1, 0)
-    healthFill.BackgroundColor3 = Color3.fromRGB(80, 220, 95)
-    healthFill.BorderSizePixel = 0
-    healthFill.Parent = healthBarBG
-
-    local staminaBarBG = Instance.new("Frame")
-    staminaBarBG.Size = UDim2.new(1, -20, 0, 10)
-    staminaBarBG.Position = UDim2.new(0, 10, 0, 50)
-    staminaBarBG.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    staminaBarBG.BorderSizePixel = 0
-    staminaBarBG.Parent = healthFrame
-
-    local staminaFill = Instance.new("Frame")
-    staminaFill.Name = "StaminaFill"
-    staminaFill.Size = UDim2.new(1, 0, 1, 0)
-    staminaFill.BackgroundColor3 = Color3.fromRGB(90, 170, 255)
-    staminaFill.BorderSizePixel = 0
-    staminaFill.Parent = staminaBarBG
-
-    local bountyLabel = Instance.new("TextLabel")
-    bountyLabel.Size = UDim2.new(1, -20, 0, 16)
-    bountyLabel.Position = UDim2.new(0, 10, 0, 60)
-    bountyLabel.Text = "Bounty: 0"
-    bountyLabel.Font = Enum.Font.Gotham
-    bountyLabel.TextSize = 12
-    bountyLabel.TextColor3 = Color3.fromRGB(255, 200, 90)
-    bountyLabel.BackgroundTransparency = 1
-    bountyLabel.Parent = healthFrame
-
-    local function updateStats()
-        local char = player.Character
-        if not char then
-            return
-        end
-
-        local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if not humanoid then
-            return
-        end
-
-        local healthRatio = humanoid.Health / humanoid.MaxHealth
-        healthFill.Size = UDim2.new(healthRatio, 0, 1, 0)
-        healthLabel.Text = "HP: " .. math.floor(humanoid.Health) .. " / " .. math.floor(humanoid.MaxHealth)
-
-        local stamina = player:GetAttribute("Stamina") or 100
-        local staminaRatio = stamina / combatConfig.Player.StaminaMax
-        staminaFill.Size = UDim2.new(staminaRatio, 0, 1, 0)
-
-        local stats = player:FindFirstChild("leaderstats")
-        local bounty = stats and stats:FindFirstChild("Bounty")
-        if bounty then
-            bountyLabel.Text = "Bounty: " .. bounty.Value
-        end
-    end
-
-    player.CharacterAdded:Connect(function(character)
-        local humanoid = character:WaitForChild("Humanoid")
-        humanoid.HealthChanged:Connect(updateStats)
-        updateStats()
-    end)
-
-    player:GetPropertyChangedSignal("leaderstats"):Connect(updateStats)
-    if player.Character then
-        local humanoid = player.Character:WaitForChild("Humanoid")
-        humanoid.HealthChanged:Connect(updateStats)
-        updateStats()
-    end
-
-    return gui
+local function isOwner(player)
+    return player.UserId == game.CreatorId
 end
 
-local function performAttack()
-    if cooldown > 0 then
+local function setPower(player, value)
+    local char = player.Character
+    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+    if not humanoid then
         return
     end
 
+    humanoid.MaxHealth = value
+    humanoid.Health = value
+    humanoid.WalkSpeed = value / 2
+    humanoid.JumpPower = value / 1.4
+end
+
+local function summonBossNear(player)
     local char = player.Character
     if not char then
         return
@@ -130,70 +41,213 @@ local function performAttack()
         return
     end
 
-    cooldown = combatConfig.Player.AttackCooldown
-    attackEvent:FireServer({
-        LookVector = root.CFrame.LookVector,
-    })
+    local bosses = Workspace:FindFirstChild("Bosses") or Instance.new("Folder")
+    bosses.Name = "Bosses"
+    bosses.Parent = Workspace
+
+    local bossName = "Astral Tyrant"
+    local boss = WorldBuilder.createBoss(root.Position + Vector3.new(12, 2, 0), bossName)
+    boss.Parent = bosses
 end
 
-local function dash()
-    if dashCooldown > 0 then
+local function killAllEnemies()
+    local enemies = Workspace:FindFirstChild("Enemies")
+    if not enemies then
         return
     end
 
+    for _, enemy in ipairs(enemies:GetChildren()) do
+        if enemy:IsA("Model") then
+            local humanoid = enemy:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.Health = 0
+            end
+        end
+    end
+
+    local bosses = Workspace:FindFirstChild("Bosses")
+    if bosses then
+        for _, boss in ipairs(bosses:GetChildren()) do
+            if boss:IsA("Model") then
+                local humanoid = boss:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.Health = 0
+                end
+            end
+        end
+    end
+end
+
+local function applyFruit(player, fruitName)
+    if not fruitName then
+        return
+    end
+
+    local cleanName = string.lower(fruitName)
+    player:SetAttribute("DevilFruit", cleanName)
+    local multiplier = CombatConfig.DevilFruit.Boost[cleanName] or 1.5
+    player:SetAttribute("PowerLevel", 10 * multiplier)
+
+    local char = player.Character
+    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.MaxHealth = CombatConfig.Player.MaxHealth * multiplier
+        humanoid.Health = humanoid.MaxHealth
+        humanoid.WalkSpeed = CombatConfig.Player.WalkSpeed * multiplier
+        humanoid.JumpPower = CombatConfig.Player.JumpPower * multiplier
+    end
+end
+
+local function setLevel(player, levelValue)
+    local leaderstats = player:FindFirstChild("leaderstats")
+    local level = leaderstats and leaderstats:FindFirstChild("Level")
+    if level then
+        level.Value = levelValue
+    end
+
+    player:SetAttribute("PowerLevel", levelValue)
+end
+
+local function spawnFruitNearPlayer(player, fruitName)
     local char = player.Character
     if not char then
         return
     end
 
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if humanoid and hrp then
-        dashCooldown = 1.8
-        local previousSpeed = humanoid.WalkSpeed
-        humanoid.WalkSpeed = combatConfig.Player.DashSpeed
-        task.delay(combatConfig.Player.DashTime, function()
-            humanoid.WalkSpeed = previousSpeed
-        end)
-    end
-end
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then
         return
     end
 
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.F then
-        performAttack()
-    elseif input.KeyCode == Enum.KeyCode.LeftShift then
-        dash()
-    elseif input.KeyCode == Enum.KeyCode.Q then
-        performAttack()
+    local fruitsFolder = Workspace:FindFirstChild("DevilFruits") or Instance.new("Folder")
+    fruitsFolder.Name = "DevilFruits"
+    fruitsFolder.Parent = Workspace
+
+    local fruit = WorldBuilder.spawnDevilFruit(fruitName, root.Position + Vector3.new(8, 4, 0))
+    fruit.Parent = fruitsFolder
+
+    fruit.Touched:Connect(function(hit)
+        local target = Players:GetPlayerFromCharacter(hit.Parent)
+        if target and target == player then
+            applyFruit(player, fruitName)
+            fruit:Destroy()
+        end
+    end)
+end
+
+local function parseCommand(commandText)
+    if type(commandText) ~= "string" then
+        return nil, {}
+    end
+
+    local trimmed = string.gsub(commandText, "^%s+", "")
+    trimmed = string.gsub(trimmed, "%s+$", "")
+    local args = string.split(trimmed, " ")
+    local action = string.lower(args[1] or "")
+    table.remove(args, 1)
+    return action, args
+end
+
+commandEvent.OnServerEvent:Connect(function(player, commandText)
+    if not isOwner(player) then
+        return
+    end
+
+    local action, args = parseCommand(commandText)
+    if not action then
+        return
+    end
+
+    if action == "/heal" then
+        local char = player.Character
+        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.Health = humanoid.MaxHealth
+        end
+    elseif action == "/god" then
+        local duration = tonumber(args[1]) or 30
+        player:SetAttribute("GodMode", true)
+        task.delay(duration, function()
+            player:SetAttribute("GodMode", false)
+        end)
+    elseif action == "/max" then
+        local char = player.Character
+        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.MaxHealth = 9999
+            humanoid.Health = 9999
+            humanoid.WalkSpeed = 200
+            humanoid.JumpPower = 200
+        end
+    elseif action == "/reset" then
+        local char = player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.CFrame = CFrame.new(0, 8, 24)
+        end
+    elseif action == "/tp" then
+        local x = tonumber(args[1]) or 0
+        local y = tonumber(args[2]) or 0
+        local z = tonumber(args[3]) or 0
+        local char = player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.CFrame = CFrame.new(x, y, z)
+        end
+    elseif action == "/bounty" then
+        local amount = tonumber(args[1]) or 0
+        local leaderstats = player:FindFirstChild("leaderstats")
+        local bounty = leaderstats and leaderstats:FindFirstChild("Bounty")
+        if bounty then
+            bounty.Value = amount
+        end
+    elseif action == "/level" then
+        local levelValue = tonumber(args[1]) or 1
+        setLevel(player, levelValue)
+    elseif action == "/spawnboss" then
+        summonBossNear(player)
+    elseif action == "/killall" then
+        killAllEnemies()
+    elseif action == "/spawnfruit" then
+        local fruitName = args[1] or "fire"
+        spawnFruitNearPlayer(player, fruitName)
+    elseif action == "/setfruit" then
+        local fruitName = args[1] or "fire"
+        applyFruit(player, fruitName)
+    elseif action == "/speed" then
+        local speed = tonumber(args[1]) or 200
+        local char = player.Character
+        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = speed
+        end
+    elseif action == "/superjump" then
+        local char = player.Character
+        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.JumpPower = 500
+            task.delay(12, function()
+                humanoid.JumpPower = CombatConfig.Player.JumpPower
+            end)
+        end
+    elseif action == "/fly" then
+        player:SetAttribute("FlyMode", true)
+        local char = player.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+        if hrp and humanoid then
+            local fly = Instance.new("BodyVelocity")
+            fly.MaxForce = Vector3.new(0, 50000, 0)
+            fly.Velocity = Vector3.new(0, 50, 0)
+            fly.Parent = hrp
+            task.delay(12, function()
+                player:SetAttribute("FlyMode", false)
+                if fly and fly.Parent then
+                    fly:Destroy()
+                end
+            end)
+        end
     end
 end)
 
-createCombatUI()
-
-while true do
-    if cooldown > 0 then
-        cooldown -= 0.05
-    end
-
-    if dashCooldown > 0 then
-        dashCooldown -= 0.05
-    end
-
-    local playerCharacter = player.Character
-    if playerCharacter then
-        local humanoid = playerCharacter:FindFirstChildOfClass("Humanoid")
-        if humanoid and humanoid.Health > 0 then
-            local stamina = player:GetAttribute("Stamina") or combatConfig.Player.StaminaMax
-            if stamina < combatConfig.Player.StaminaMax then
-                stamina = math.min(combatConfig.Player.StaminaMax, stamina + combatConfig.Player.StaminaRegen * 0.05)
-                player:SetAttribute("Stamina", stamina)
-            end
-        end
-    end
-
-    task.wait(0.05)
-end
+print("Owner commands loaded. Overpowered admin commands active.")
