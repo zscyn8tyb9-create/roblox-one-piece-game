@@ -1,253 +1,94 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
 
-local CombatConfig = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("CombatConfig"))
-local WorldBuilder = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("WorldBuilder"))
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
-local adminFolder = ReplicatedStorage:FindFirstChild("Admin") or Instance.new("Folder")
-adminFolder.Name = "Admin"
-adminFolder.Parent = ReplicatedStorage
+print("[AdminClient] Loading...")
 
-local commandEvent = adminFolder:FindFirstChild("RunCommand") or Instance.new("RemoteEvent")
-commandEvent.Name = "RunCommand"
-commandEvent.Parent = adminFolder
+local adminFolder = ReplicatedStorage:WaitForChild("Admin")
+local commandEvent = adminFolder:WaitForChild("RunCommand")
 
-local function isOwner(player)
-    return player.UserId == game.CreatorId
-end
+local function createAdminPanel()
+    print("[AdminClient] Creating admin panel...")
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "AdminPanel"
+    gui.ResetOnSpawn = false
+    gui.Parent = playerGui
 
-local function setPower(player, value)
-    local char = player.Character
-    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-    if not humanoid then
-        return
-    end
+    local panel = Instance.new("Frame")
+    panel.Name = "CommandPanel"
+    panel.Size = UDim2.new(0, 300, 0, 150)
+    panel.Position = UDim2.new(0, 20, 0, 20)
+    panel.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    panel.BackgroundTransparency = 0.25
+    panel.BorderSizePixel = 0
+    panel.Parent = gui
 
-    humanoid.MaxHealth = value
-    humanoid.Health = value
-    humanoid.WalkSpeed = value / 2
-    humanoid.JumpPower = value / 1.4
-end
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -20, 0, 24)
+    title.Position = UDim2.new(0, 10, 0, 10)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.GothamBold
+    title.Text = "Owner Commands"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 18
+    title.Parent = panel
 
-local function summonBossNear(player)
-    local char = player.Character
-    if not char then
-        return
-    end
+    local helpText = Instance.new("TextLabel")
+    helpText.Size = UDim2.new(1, -20, 0, 32)
+    helpText.Position = UDim2.new(0, 10, 0, 38)
+    helpText.BackgroundTransparency = 1
+    helpText.Font = Enum.Font.Gotham
+    helpText.Text = "Examples: /heal, /max, /tp 0 10 50, /setfruit fire"
+    helpText.TextColor3 = Color3.fromRGB(200, 200, 200)
+    helpText.TextSize = 11
+    helpText.TextWrapped = true
+    helpText.Parent = panel
 
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then
-        return
-    end
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(1, -20, 0, 28)
+    box.Position = UDim2.new(0, 10, 0, 75)
+    box.PlaceholderText = "Type command here..."
+    box.ClearTextOnFocus = false
+    box.TextColor3 = Color3.fromRGB(255, 255, 255)
+    box.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    box.BorderSizePixel = 0
+    box.Font = Enum.Font.Gotham
+    box.TextSize = 14
+    box.Parent = panel
 
-    local bosses = Workspace:FindFirstChild("Bosses") or Instance.new("Folder")
-    bosses.Name = "Bosses"
-    bosses.Parent = Workspace
+    local runButton = Instance.new("TextButton")
+    runButton.Size = UDim2.new(0, 120, 0, 26)
+    runButton.Position = UDim2.new(0, 10, 1, -34)
+    runButton.Text = "Run Command"
+    runButton.Font = Enum.Font.GothamBold
+    runButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    runButton.BackgroundColor3 = Color3.fromRGB(60, 150, 255)
+    runButton.BorderSizePixel = 0
+    runButton.Parent = panel
 
-    local bossName = "Astral Tyrant"
-    local boss = WorldBuilder.createBoss(root.Position + Vector3.new(12, 2, 0), bossName)
-    boss.Parent = bosses
-end
-
-local function killAllEnemies()
-    local enemies = Workspace:FindFirstChild("Enemies")
-    if not enemies then
-        return
-    end
-
-    for _, enemy in ipairs(enemies:GetChildren()) do
-        if enemy:IsA("Model") then
-            local humanoid = enemy:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                humanoid.Health = 0
-            end
+    local function runCommand()
+        local text = box.Text
+        if text ~= "" then
+            print("[AdminClient] Sending command: " .. text)
+            commandEvent:FireServer(text)
+            box.Text = ""
         end
     end
 
-    local bosses = Workspace:FindFirstChild("Bosses")
-    if bosses then
-        for _, boss in ipairs(bosses:GetChildren()) do
-            if boss:IsA("Model") then
-                local humanoid = boss:FindFirstChildOfClass("Humanoid")
-                if humanoid then
-                    humanoid.Health = 0
-                end
-            end
-        end
-    end
-end
+    runButton.MouseButton1Click:Connect(runCommand)
 
-local function applyFruit(player, fruitName)
-    if not fruitName then
-        return
-    end
-
-    local cleanName = string.lower(fruitName)
-    player:SetAttribute("DevilFruit", cleanName)
-    local multiplier = CombatConfig.DevilFruit.Boost[cleanName] or 1.5
-    player:SetAttribute("PowerLevel", 10 * multiplier)
-
-    local char = player.Character
-    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.MaxHealth = CombatConfig.Player.MaxHealth * multiplier
-        humanoid.Health = humanoid.MaxHealth
-        humanoid.WalkSpeed = CombatConfig.Player.WalkSpeed * multiplier
-        humanoid.JumpPower = CombatConfig.Player.JumpPower * multiplier
-    end
-end
-
-local function setLevel(player, levelValue)
-    local leaderstats = player:FindFirstChild("leaderstats")
-    local level = leaderstats and leaderstats:FindFirstChild("Level")
-    if level then
-        level.Value = levelValue
-    end
-
-    player:SetAttribute("PowerLevel", levelValue)
-end
-
-local function spawnFruitNearPlayer(player, fruitName)
-    local char = player.Character
-    if not char then
-        return
-    end
-
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then
-        return
-    end
-
-    local fruitsFolder = Workspace:FindFirstChild("DevilFruits") or Instance.new("Folder")
-    fruitsFolder.Name = "DevilFruits"
-    fruitsFolder.Parent = Workspace
-
-    local fruit = WorldBuilder.spawnDevilFruit(fruitName, root.Position + Vector3.new(8, 4, 0))
-    fruit.Parent = fruitsFolder
-
-    fruit.Touched:Connect(function(hit)
-        local target = Players:GetPlayerFromCharacter(hit.Parent)
-        if target and target == player then
-            applyFruit(player, fruitName)
-            fruit:Destroy()
+    box.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            runCommand()
         end
     end)
+
+    print("[AdminClient] Admin panel created.")
 end
 
-local function parseCommand(commandText)
-    if type(commandText) ~= "string" then
-        return nil, {}
-    end
+creatAdminPanel()
 
-    local trimmed = string.gsub(commandText, "^%s+", "")
-    trimmed = string.gsub(trimmed, "%s+$", "")
-    local args = string.split(trimmed, " ")
-    local action = string.lower(args[1] or "")
-    table.remove(args, 1)
-    return action, args
-end
-
-commandEvent.OnServerEvent:Connect(function(player, commandText)
-    if not isOwner(player) then
-        return
-    end
-
-    local action, args = parseCommand(commandText)
-    if not action then
-        return
-    end
-
-    if action == "/heal" then
-        local char = player.Character
-        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.Health = humanoid.MaxHealth
-        end
-    elseif action == "/god" then
-        local duration = tonumber(args[1]) or 30
-        player:SetAttribute("GodMode", true)
-        task.delay(duration, function()
-            player:SetAttribute("GodMode", false)
-        end)
-    elseif action == "/max" then
-        local char = player.Character
-        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.MaxHealth = 9999
-            humanoid.Health = 9999
-            humanoid.WalkSpeed = 200
-            humanoid.JumpPower = 200
-        end
-    elseif action == "/reset" then
-        local char = player.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            hrp.CFrame = CFrame.new(0, 8, 24)
-        end
-    elseif action == "/tp" then
-        local x = tonumber(args[1]) or 0
-        local y = tonumber(args[2]) or 0
-        local z = tonumber(args[3]) or 0
-        local char = player.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            hrp.CFrame = CFrame.new(x, y, z)
-        end
-    elseif action == "/bounty" then
-        local amount = tonumber(args[1]) or 0
-        local leaderstats = player:FindFirstChild("leaderstats")
-        local bounty = leaderstats and leaderstats:FindFirstChild("Bounty")
-        if bounty then
-            bounty.Value = amount
-        end
-    elseif action == "/level" then
-        local levelValue = tonumber(args[1]) or 1
-        setLevel(player, levelValue)
-    elseif action == "/spawnboss" then
-        summonBossNear(player)
-    elseif action == "/killall" then
-        killAllEnemies()
-    elseif action == "/spawnfruit" then
-        local fruitName = args[1] or "fire"
-        spawnFruitNearPlayer(player, fruitName)
-    elseif action == "/setfruit" then
-        local fruitName = args[1] or "fire"
-        applyFruit(player, fruitName)
-    elseif action == "/speed" then
-        local speed = tonumber(args[1]) or 200
-        local char = player.Character
-        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.WalkSpeed = speed
-        end
-    elseif action == "/superjump" then
-        local char = player.Character
-        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.JumpPower = 500
-            task.delay(12, function()
-                humanoid.JumpPower = CombatConfig.Player.JumpPower
-            end)
-        end
-    elseif action == "/fly" then
-        player:SetAttribute("FlyMode", true)
-        local char = player.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-        if hrp and humanoid then
-            local fly = Instance.new("BodyVelocity")
-            fly.MaxForce = Vector3.new(0, 50000, 0)
-            fly.Velocity = Vector3.new(0, 50, 0)
-            fly.Parent = hrp
-            task.delay(12, function()
-                player:SetAttribute("FlyMode", false)
-                if fly and fly.Parent then
-                    fly:Destroy()
-                end
-            end)
-        end
-    end
-end)
-
-print("Owner commands loaded. Overpowered admin commands active.")
+print("[AdminClient] ✅ Admin client loaded.")

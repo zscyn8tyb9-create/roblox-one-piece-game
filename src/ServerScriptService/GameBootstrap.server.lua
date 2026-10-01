@@ -3,25 +3,43 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 
+print("[GameBootstrap] Starting game initialization...")
+
 local CombatConfig = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("CombatConfig"))
+local WorldBuilder = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("WorldBuilder"))
+
+print("[GameBootstrap] Modules loaded successfully.")
+
+local enemiesFolder = Workspace:FindFirstChild("Enemies") or Instance.new("Folder")
+enemiesFolder.Name = "Enemies"
+enemiesFolder.Parent = Workspace
+
+local bossFolder = Workspace:FindFirstChild("Bosses") or Instance.new("Folder")
+bossFolder.Name = "Bosses"
+bossFolder.Parent = Workspace
+
+local fruitsFolder = Workspace:FindFirstChild("DevilFruits") or Instance.new("Folder")
+fruitsFolder.Name = "DevilFruits"
+fruitsFolder.Parent = Workspace
 
 local function createIsland()
+    print("[GameBootstrap] Creating island...")
     local island = Workspace:FindFirstChild("Island") or Instance.new("Model")
     island.Name = "Island"
     island.Parent = Workspace
 
     local base = island:FindFirstChild("Base") or Instance.new("Part")
     base.Name = "Base"
-    base.Size = Vector3.new(220, 6, 220)
+    base.Size = Vector3.new(260, 6, 260)
     base.Position = Vector3.new(0, -3, 0)
     base.Anchored = true
     base.Material = Enum.Material.Grass
-    base.Color = Color3.fromRGB(85, 170, 90)
+    base.Color = Color3.fromRGB(80, 175, 85)
     base.Parent = island
 
     local sand = island:FindFirstChild("Sand") or Instance.new("Part")
     sand.Name = "Sand"
-    sand.Size = Vector3.new(190, 1, 190)
+    sand.Size = Vector3.new(220, 1, 220)
     sand.Position = Vector3.new(0, 0.5, 0)
     sand.Anchored = true
     sand.Material = Enum.Material.Sand
@@ -30,88 +48,68 @@ local function createIsland()
 
     local water = island:FindFirstChild("Water") or Instance.new("Part")
     water.Name = "Water"
-    water.Size = Vector3.new(240, 3, 240)
+    water.Size = Vector3.new(300, 3, 300)
     water.Position = Vector3.new(0, -8, 0)
     water.Anchored = true
     water.Material = Enum.Material.Water
-    water.Color = Color3.fromRGB(70, 130, 220)
+    water.Color = Color3.fromRGB(68, 128, 220)
     water.Transparency = 0.2
     water.Parent = island
 
-    local spawnPart = island:FindFirstChild("SpawnPad") or Instance.new("Part")
-    spawnPart.Name = "SpawnPad"
-    spawnPart.Size = Vector3.new(12, 1, 12)
-    spawnPart.Position = Vector3.new(0, 5, 20)
-    spawnPart.Anchored = true
-    spawnPart.Material = Enum.Material.SmoothPlastic
-    spawnPart.Color = Color3.fromRGB(255, 255, 255)
-    spawnPart.Parent = island
+    local spawnPad = island:FindFirstChild("SpawnPad") or Instance.new("Part")
+    spawnPad.Name = "SpawnPad"
+    spawnPad.Size = Vector3.new(14, 1, 14)
+    spawnPad.Position = Vector3.new(0, 5, 24)
+    spawnPad.Anchored = true
+    spawnPad.Material = Enum.Material.SmoothPlastic
+    spawnPad.Color = Color3.fromRGB(255, 255, 255)
+    spawnPad.Parent = island
 
     local spawn = island:FindFirstChild("PlayerSpawn") or Instance.new("SpawnLocation")
     spawn.Name = "PlayerSpawn"
-    spawn.Size = spawnPart.Size
-    spawn.Position = spawnPart.Position + Vector3.new(0, 2, 0)
+    spawn.Size = spawnPad.Size
+    spawn.Position = spawnPad.Position + Vector3.new(0, 2, 0)
     spawn.Anchored = true
-    spawn.Color = Color3.fromRGB(120, 200, 255)
+    spawn.Color = Color3.fromRGB(120, 190, 255)
     spawn.Neutral = true
     spawn.Parent = island
 
-    for i = 1, 32 do
-        local tree = Instance.new("Model")
-        tree.Name = "Tree" .. i
-        tree.Parent = island
-
-        local trunk = Instance.new("Part")
-        trunk.Name = "Trunk"
-        trunk.Size = Vector3.new(1.5, 8, 1.5)
-        trunk.Position = Vector3.new(math.random(-90, 90), 4, math.random(-90, 90))
-        trunk.Anchored = true
-        trunk.Material = Enum.Material.Wood
-        trunk.Color = Color3.fromRGB(115, 76, 38)
-        trunk.Parent = tree
-
-        local leaves = Instance.new("Part")
-        leaves.Name = "Leaves"
-        leaves.Size = Vector3.new(6, 6, 6)
-        leaves.Position = trunk.Position + Vector3.new(0, 4.5, 0)
-        leaves.Anchored = true
-        leaves.Material = Enum.Material.Grass
-        leaves.Color = Color3.fromRGB(40, 180, 65)
-        leaves.Parent = tree
-    end
-
     Lighting.TimeOfDay = "14:00:00"
-    Lighting.Brightness = 2
-    Lighting.OutdoorAmbient = Color3.fromRGB(180, 200, 220)
+    Lighting.Brightness = 2.2
+    Lighting.OutdoorAmbient = Color3.fromRGB(182, 198, 220)
 
     local sky = Lighting:FindFirstChild("Sky") or Instance.new("Sky")
     sky.Name = "Sky"
     sky.Parent = Lighting
 
+    print("[GameBootstrap] Island created.")
     return island
 end
 
-local function createRemoteFolders()
-    local remotesFolder = ReplicatedStorage:FindFirstChild("Combat") or Instance.new("Folder")
-    remotesFolder.Name = "Combat"
-    remotesFolder.Parent = ReplicatedStorage
+local function setupRemotes()
+    print("[GameBootstrap] Setting up remote events...")
+    local combatFolder = ReplicatedStorage:FindFirstChild("Combat") or Instance.new("Folder")
+    combatFolder.Name = "Combat"
+    combatFolder.Parent = ReplicatedStorage
 
-    local attackEvent = remotesFolder:FindFirstChild("Attack") or Instance.new("RemoteEvent")
+    local attackEvent = combatFolder:FindFirstChild("Attack") or Instance.new("RemoteEvent")
     attackEvent.Name = "Attack"
-    attackEvent.Parent = remotesFolder
+    attackEvent.Parent = combatFolder
 
     local adminFolder = ReplicatedStorage:FindFirstChild("Admin") or Instance.new("Folder")
     adminFolder.Name = "Admin"
     adminFolder.Parent = ReplicatedStorage
 
-    local runCommand = adminFolder:FindFirstChild("RunCommand") or Instance.new("RemoteEvent")
-    runCommand.Name = "RunCommand"
-    runCommand.Parent = adminFolder
+    local commandEvent = adminFolder:FindFirstChild("RunCommand") or Instance.new("RemoteEvent")
+    commandEvent.Name = "RunCommand"
+    commandEvent.Parent = adminFolder
 
-    return remotesFolder, attackEvent, adminFolder, runCommand
+    print("[GameBootstrap] Remote events setup complete.")
+    return combatFolder, adminFolder
 end
 
-local function setupStats(player)
+local function setupPlayer(player)
+    print("[GameBootstrap] Setting up player: " .. player.Name)
     local leaderstats = player:FindFirstChild("leaderstats") or Instance.new("Folder")
     leaderstats.Name = "leaderstats"
     leaderstats.Parent = player
@@ -129,6 +127,10 @@ local function setupStats(player)
     player:SetAttribute("LastAttackTime", 0)
     player:SetAttribute("DashCooldown", 0)
     player:SetAttribute("GodMode", false)
+    player:SetAttribute("DevilFruit", "none")
+    player:SetAttribute("PowerLevel", 1)
+    player:SetAttribute("FlyMode", false)
+    player:SetAttribute("Stamina", CombatConfig.Player.StaminaMax)
 end
 
 local function applyCharacterStats(character)
@@ -143,11 +145,101 @@ local function applyCharacterStats(character)
     humanoid.JumpPower = CombatConfig.Player.JumpPower
 end
 
+local function spawnDevilFruits()
+    print("[GameBootstrap] Spawning devil fruits...")
+    local fruits = {
+        {"fire", Vector3.new(-20, 6, -10)},
+        {"storm", Vector3.new(25, 6, -30)},
+        {"ice", Vector3.new(-30, 6, 30)},
+        {"lightning", Vector3.new(35, 6, 18)},
+        {"quake", Vector3.new(0, 6, -40)},
+    }
+
+    for _, fruitData in ipairs(fruits) do
+        local fruitName, pos = fruitData[1], fruitData[2]
+        local fruit = WorldBuilder.spawnDevilFruit(fruitName, pos)
+        fruit.Parent = fruitsFolder
+        fruit.Touched:Connect(function(hit)
+            local player = Players:GetPlayerFromCharacter(hit.Parent)
+            if not player then
+                return
+            end
+
+            local name = fruit:GetAttribute("DevilFruit")
+            if name then
+                player:SetAttribute("DevilFruit", name)
+                player:SetAttribute("PowerLevel", (player:GetAttribute("PowerLevel") or 1) + 5)
+                print(player.Name .. " picked up " .. name .. " fruit!")
+                fruit:Destroy()
+            end
+        end)
+    end
+end
+
+local function spawnBosses()
+    print("[GameBootstrap] Spawning bosses...")
+    local bossSpawns = {
+        {"Storm Titan", Vector3.new(-55, 8, -10)},
+        {"Sea Wyrm", Vector3.new(55, 8, 10)},
+    }
+
+    for _, bossData in ipairs(bossSpawns) do
+        local name, pos = bossData[1], bossData[2]
+        local boss = WorldBuilder.createBoss(pos, name)
+        boss.Parent = bossFolder
+    end
+end
+
+local function spawnWaveEnemies()
+    print("[GameBootstrap] Spawning enemies...")
+    for i = 1, CombatConfig.Enemy.SpawnCount do
+        local x = math.random(-80, 80)
+        local z = math.random(-80, 80)
+        local enemy = WorldBuilder.createEnemy(Vector3.new(x, 5, z))
+        enemy.Parent = enemiesFolder
+    end
+end
+
+local function createQuestBoard()
+    print("[GameBootstrap] Creating quest board...")
+    local board = Workspace:FindFirstChild("QuestBoard") or Instance.new("Part")
+    board.Name = "QuestBoard"
+    board.Size = Vector3.new(8, 6, 1)
+    board.Position = Vector3.new(0, 8, 45)
+    board.Anchored = true
+    board.Material = Enum.Material.Wood
+    board.Color = Color3.fromRGB(130, 90, 40)
+    board.Parent = Workspace
+
+    local sign = Instance.new("BillboardGui")
+    sign.Name = "QuestSign"
+    sign.Size = UDim2.new(0, 220, 0, 80)
+    sign.StudsOffset = Vector3.new(0, 4, 0)
+    sign.Parent = board
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 1, 0)
+    title.BackgroundTransparency = 1
+    title.Font = Enum.Font.GothamBold
+    title.Text = "ISLAND QUESTS\nSlay 3 enemies or defeat a boss"
+    title.TextScaled = true
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Parent = sign
+
+    return board
+end
+
+print("[GameBootstrap] Initializing game world...")
+
 createIsland()
-createRemoteFolders()
+setupRemotes()
+spawnDevilFruits()
+spawnBosses()
+spawnWaveEnemies()
+createQuestBoard()
 
 for _, player in ipairs(Players:GetPlayers()) do
-    setupStats(player)
+    setupPlayer(player)
     player.CharacterAdded:Connect(function(character)
         applyCharacterStats(character)
     end)
@@ -158,8 +250,10 @@ for _, player in ipairs(Players:GetPlayers()) do
 end
 
 Players.PlayerAdded:Connect(function(player)
-    setupStats(player)
+    setupPlayer(player)
     player.CharacterAdded:Connect(function(character)
         applyCharacterStats(character)
     end)
 end)
+
+print("[GameBootstrap] ✅ Game initialized successfully!")
