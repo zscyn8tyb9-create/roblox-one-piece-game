@@ -5,14 +5,17 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-print("[CombatClient] Client loading...")
+print("[CombatClient] Loading combat client...")
 
 local combatConfig = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("CombatConfig"))
+local ComboSystem = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("ComboSystem"))
 local combatFolder = ReplicatedStorage:WaitForChild("Combat")
 local attackEvent = combatFolder:WaitForChild("Attack")
 
 local cooldown = 0
 local dashCooldown = 0
+local comboCount = 0
+local comboResetTime = 0
 
 local function createCombatUI()
     print("[CombatClient] Creating combat UI...")
@@ -22,8 +25,8 @@ local function createCombatUI()
     gui.Parent = playerGui
 
     local healthFrame = Instance.new("Frame")
-    healthFrame.Size = UDim2.new(0, 260, 0, 80)
-    healthFrame.Position = UDim2.new(0, 20, 1, -110)
+    healthFrame.Size = UDim2.new(0, 300, 0, 100)
+    healthFrame.Position = UDim2.new(0, 20, 1, -130)
     healthFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
     healthFrame.BackgroundTransparency = 0.2
     healthFrame.BorderSizePixel = 0
@@ -41,7 +44,7 @@ local function createCombatUI()
 
     local healthBarBG = Instance.new("Frame")
     healthBarBG.Size = UDim2.new(1, -20, 0, 12)
-    healthBarBG.Position = UDim2.new(0, 10, 0, 32)
+    healthBarBG.Position = UDim2.new(0, 10, 0, 30)
     healthBarBG.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     healthBarBG.BorderSizePixel = 0
     healthBarBG.Parent = healthFrame
@@ -67,13 +70,24 @@ local function createCombatUI()
     staminaFill.BorderSizePixel = 0
     staminaFill.Parent = staminaBarBG
 
+    local comboLabel = Instance.new("TextLabel")
+    comboLabel.Name = "ComboLabel"
+    comboLabel.Size = UDim2.new(1, -20, 0, 16)
+    comboLabel.Position = UDim2.new(0, 10, 0, 65)
+    comboLabel.Text = "Combo: 0x"
+    comboLabel.Font = Enum.Font.GothamBold
+    comboLabel.TextSize = 12
+    comboLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+    comboLabel.BackgroundTransparency = 1
+    comboLabel.Parent = healthFrame
+
     local bountyLabel = Instance.new("TextLabel")
     bountyLabel.Size = UDim2.new(1, -20, 0, 16)
-    bountyLabel.Position = UDim2.new(0, 10, 0, 60)
+    bountyLabel.Position = UDim2.new(0, 10, 0, 82)
     bountyLabel.Text = "Bounty: 0"
     bountyLabel.Font = Enum.Font.Gotham
-    bountyLabel.TextSize = 12
-    bountyLabel.TextColor3 = Color3.fromRGB(255, 200, 90)
+    bountyLabel.TextSize = 11
+    bountyLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
     bountyLabel.BackgroundTransparency = 1
     bountyLabel.Parent = healthFrame
 
@@ -96,6 +110,13 @@ local function createCombatUI()
         local staminaRatio = stamina / combatConfig.Player.StaminaMax
         staminaFill.Size = UDim2.new(math.max(0, math.min(1, staminaRatio)), 0, 1, 0)
 
+        -- Combo counter
+        local now = os.clock()
+        if now > comboResetTime then
+            comboCount = 0
+        end
+        comboLabel.Text = "Combo: " .. comboCount .. "x"
+
         local stats = player:FindFirstChild("leaderstats")
         local bounty = stats and stats:FindFirstChild("Bounty")
         if bounty then
@@ -109,7 +130,6 @@ local function createCombatUI()
         updateStats()
     end)
 
-    player:GetPropertyChangedSignal("leaderstats"):Connect(updateStats)
     if player.Character then
         pcall(function()
             local humanoid = player.Character:WaitForChild("Humanoid")
@@ -138,8 +158,16 @@ local function performAttack()
     end
 
     cooldown = combatConfig.Player.AttackCooldown
+    comboCount = comboCount + 1
+    comboResetTime = os.clock() + combatConfig.Combo.Window
+    
+    if comboCount > combatConfig.Combo.MaxHits then
+        comboCount = 1
+    end
+    
     attackEvent:FireServer({
         LookVector = root.CFrame.LookVector,
+        ComboHit = comboCount,
     })
 end
 
